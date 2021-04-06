@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:audio_service/audio_service.dart';
+import 'package:audiohub/BackgroundAudio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -496,6 +498,8 @@ class HomePageState extends State<HomePage> {
     await player.setAudioSource(AudioSource.uri(Uri.parse(audioUrl)));
     await player.load();
     mediaLength = player.duration.inSeconds.toDouble();
+    g.currentFile = currentFile;
+    g.player = player;
     print('////////////////');
     print('////////////////');
     print(mediaLength);
@@ -503,6 +507,17 @@ class HomePageState extends State<HomePage> {
     print('////////////////');
     player.play();
     setProgress();
+    await AudioService.connect();
+    await AudioService.start(
+        backgroundTaskEntrypoint: backgroundEntryPoint,
+        androidNotificationChannelName: 'Audio Hub',
+        androidNotificationColor: 0xfe212121,
+        androidNotificationIcon: 'mipmap/ic_launcher');
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+  void backgroundEntryPoint() async {
+    AudioServiceBackground.run(() => BackgroundAudio());
   }
 
 ////////////////////////////////////////////////////////////////////////////////
