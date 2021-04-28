@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:audio_service/audio_service.dart';
-import 'package:audiohub/BackgroundAudio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -13,7 +11,7 @@ import 'package:just_audio/just_audio.dart';
 
 import 'package:marquee_widget/marquee_widget.dart';
 
-import 'globalvariables.dart' as g;
+import 'package:audiohub/globalvariables.dart' as g;
 
 import 'package:audiohub/audiohubplayer.dart';
 
@@ -170,12 +168,29 @@ class HomePageState extends State<HomePage> {
 
   //////////////////////////////////////////////////////////////////////////////
   Widget createListTile(DocumentSnapshot document) {
-    String audio_url=document.data()['audio_url'];
-    String cover=document.data()['cover'];
-    String artist=document.data()['artist'];
-    String title=document.data()['title'];
-    //
+    final ValueNotifier<int> listFav = ValueNotifier<int>(0);
+    String listTitle = document.data()['title'];
     return
+
+        /*
+    GestureDetector(
+        onTap: () {
+          currentFile = document;
+          getAudioUrl(document.data()['audio_url']);
+          if (player.playing == true) {
+            player.stop();
+            t.cancel();
+          }
+          g.playing = true;
+          setState(() {
+            g.p = 0;
+            progress = 0;
+            visibility = true;
+          });
+          playAudio();
+        },
+        child: 
+        */
         Padding(
             padding: EdgeInsets.only(left: 25, right: 5, top: 10, bottom: 10),
             child: Container(
@@ -189,7 +204,7 @@ class HomePageState extends State<HomePage> {
                         child: GestureDetector(
                             onTap: () {
                               currentFile = document;
-                              getAudioUrl(audio_url);
+                              getAudioUrl(document.data()['audio_url']);
                               if (player.playing == true) {
                                 player.stop();
                                 t.cancel();
@@ -209,7 +224,7 @@ class HomePageState extends State<HomePage> {
                                   width: 45,
                                   child: ClipRRect(
                                       child: Image.network(
-                                          cover))),
+                                          document.data()['cover']))),
                               //////////////////////////////////Title & Artist
                               Expanded(
                                 child: Container(
@@ -220,7 +235,7 @@ class HomePageState extends State<HomePage> {
                                         children: [
                                           ///////////////////////////////Title
                                           Text(
-                                            title,
+                                            document.data()['title'],
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 17,
@@ -232,7 +247,7 @@ class HomePageState extends State<HomePage> {
                                               child: Padding(
                                                   padding: EdgeInsets.all(0),
                                                   child: Text(
-                                                    artist,
+                                                    document.data()['artist'],
                                                     style: TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 13),
@@ -248,7 +263,7 @@ class HomePageState extends State<HomePage> {
                         padding: EdgeInsets.only(left: 5, right: 5),
                         //////////////////////////////////////////////////////////
                         child: GestureDetector(
-                          child: g.favourites.contains(title)
+                          child: g.favourites.contains(document.data()['title'])
                               ? Icon(Icons.favorite, color: Colors.red)
                               : Icon(
                                   Icons.favorite_border_outlined,
@@ -256,7 +271,7 @@ class HomePageState extends State<HomePage> {
                                 ),
                           onTap: () {
                             if (g.favourites
-                                .contains(title)) {
+                                .contains(document.data()['title'])) {
                               unfavourite(document.data()['title']);
 
                               setState(() {
@@ -270,6 +285,14 @@ class HomePageState extends State<HomePage> {
                             }
                           },
                         )
+
+                        /*
+                                isListFavourite
+                                    ? Icon(Icons.favorite, color: Colors.red)
+                                    : Icon(
+                                        Icons.favorite_border_outlined,
+                                        color: Colors.grey,
+                                      );*/
 
                         ),
                     Padding(
@@ -476,8 +499,6 @@ class HomePageState extends State<HomePage> {
     await player.setAudioSource(AudioSource.uri(Uri.parse(audioUrl)));
     await player.load();
     mediaLength = player.duration.inSeconds.toDouble();
-    g.currentFile = currentFile;
-    g.player = player;
     print('////////////////');
     print('////////////////');
     print(mediaLength);
@@ -485,6 +506,7 @@ class HomePageState extends State<HomePage> {
     print('////////////////');
     player.play();
     setProgress();
+    //AudioHubPlayer(cover: "",audio_url: "",title: "",artist: "").play();
   }
 
 ////////////////////////////////////////////////////////////////////////////////
