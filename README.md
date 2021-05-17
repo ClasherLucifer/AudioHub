@@ -1,6 +1,6 @@
 # audiohub
 
-A new Flutter project.
+An audio streaming service written in Flutter.
 
 ## Getting Started
 
