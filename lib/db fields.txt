@@ -1,5 +1,0 @@
-title
-artist
-audio_url
-cover
-

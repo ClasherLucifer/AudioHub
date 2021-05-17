@@ -1,598 +1,349 @@
-import 'dart:async';
-
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-
 import 'package:audiohub/audiopage.dart';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'audiohubplayer.dart';
+import 'package:marquee/marquee.dart';
 
-import 'package:marquee_widget/marquee_widget.dart';
-
-import 'globalvariables.dart' as g;
+import 'package:audiohub/changeListener.dart' as Listener;
+import 'package:audiohub/global.dart';
 
 class HomePage extends StatefulWidget {
-  String uid;
-  HomePage({this.uid});
-
   @override
-  State<StatefulWidget> createState() => HomePageState();
+  State<StatefulWidget> createState() => HomeState();
 }
 
-class HomePageState extends State<HomePage> {
-  CollectionReference music = FirebaseFirestore.instance.collection('Music');
-  CollectionReference userdata =
-      FirebaseFirestore.instance.collection('User Data');
+class HomeState extends State<HomePage> {
+  ValueNotifier<int> currentMusicNotifier = ValueNotifier<int>(0);
 
-  final ValueNotifier<int> progresscounter = ValueNotifier<int>(0);
-  final ValueNotifier<int> playpausecounter = ValueNotifier<int>(0);
-  final ValueNotifier<int> favIcon = ValueNotifier<int>(0);
-
-  //Icon fav;
-
-  String uid;
-  String audioUrl;
-
-  bool visibility;
-  DocumentSnapshot currentFile;
-
-  //bool isListFavourite;
-  //bool isNowFavourite;
-
-  //
-  var player = AudioPlayer();
-
-  double mediaLength;
-  double progress;
-
-  Timer t;
+  bool visibility = false;
 
   @override
   void initState() {
     super.initState();
-    //isNowFavourite = false;
-
-    //isListFavourite = false;
-    uid = widget.uid;
-    visibility = false;
-    player.stop();
-    progress = 0.0;
-    g.p = 0;
-    g.playing = player.playing;
-    if (g.playing) {
-      visibility = true;
-      setState(() {});
-    }
-    checkIfPlaying();
+    visibility = AudioHubPlayer.isPlaying();
+    Global.fetchFavourites();
   }
-
-////////////////////////////////////////////////////////////////////////////////
-  void checkIfPlaying() {
-    if (player.playing) {
-      setProgress();
-    }
-    //g.p > 0 ? progress = 1.0 * g.p / mediaLength : progress = 0;
-    progresscounter.value++;
-    playpausecounter.value++;
-  }
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-  @override
-  void dispose() {
-    super.dispose();
-    t.cancel();
-  }
-*/
 
   @override
   Widget build(BuildContext context) {
-    getFavourites();
-    print('scaffold updated');
     return SafeArea(
         child: Scaffold(
             backgroundColor: Color(0xfe212121),
-            body: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-                        stream: music.snapshots(),
-                        builder: (BuildContext context,
-                            AsyncSnapshot<QuerySnapshot> snapshot) {
-                          ///////////////////////////////////////
-                          try {
-                            return new ListView(
+            body: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+              Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                      stream: Global.music.snapshots(),
+                      builder: (BuildContext context,
+                          AsyncSnapshot<QuerySnapshot> snapshot) {
+                        try {
+                          return new ListView(
                               children: snapshot.data.docs
                                   .map((DocumentSnapshot document) {
-                                return createListTile(document);
-                              }).toList(),
-                            );
-                          } catch (Exception) {
-                            return Container();
-                          }
-                        })
+                            return Padding(
+                                padding: EdgeInsets.only(bottom: 10),
+                                child: createListItem(document));
+                          }).toList());
+                        } catch (Exception) {
+                          return Container();
+                        }
+                      })
 
-                    //////////////////////////////////////////////
-                    ),
-                /////////////////////////////////////////////////////Now Playing
-                nowPlaying(),
-                ///////////////////////////////////////////////////Bottom NavBar
-                Theme(
-                    data: ThemeData(canvasColor: Color(0xfe212121)),
-                    child: Container(
-                        height: 55,
-                        child: BottomNavigationBar(
-                          type: BottomNavigationBarType.fixed,
-                          items: [
-                            BottomNavigationBarItem(
-                                title: Text('Home',
-                                    style: TextStyle(
-                                        color: Colors.white, fontSize: 13)),
-                                icon: Icon(Icons.home,
-                                    color: Color(0xfe9e9e9e), size: 25)),
-                            BottomNavigationBarItem(
-                                title: Text('Search',
-                                    style: TextStyle(
-                                        color: Colors.white, fontSize: 13)),
-                                icon: Icon(Icons.search,
-                                    color: Color(0xfe9e9e9e), size: 25)),
-                            BottomNavigationBarItem(
-                                title: Text('Playlists',
-                                    style: TextStyle(
-                                        color: Colors.white, fontSize: 13)),
-                                icon: Icon(Icons.menu,
-                                    color: Color(0xfe9e9e9e), size: 25)),
-                            BottomNavigationBarItem(
-                                title: Text('Local',
-                                    style: TextStyle(
-                                        color: Colors.white, fontSize: 13)),
-                                icon: Icon(Icons.cloud_download,
-                                    color: Color(0xfe9e9e9e), size: 25)),
-                          ],
-                        ))),
-                ///////////////////////////////////////////////////Bottom NavBar
-              ],
-            )));
-  }
-
-  ///////////////////////////////////////////////////////////////////Main Widget
-
-//https://drive.google.com/file/d/1tKPXZGyUOpHyP7Xo-hwU4RuXFD13SLBg/view?usp=drivesdk
-//https://drive.google.com/uc?export=view&id=
-//https://drive.google.com/uc?export=view&id=1tKPXZGyUOpHyP7Xo-hwU4RuXFD13SLBg
-
-  //////////////////////////////////////////////////////////////////////////////
-  Widget createListTile(DocumentSnapshot document) {
-    final ValueNotifier<int> listFav = ValueNotifier<int>(0);
-    String listTitle = document.data()['title'];
-    return
-
-        /*
-    GestureDetector(
-        onTap: () {
-          currentFile = document;
-          getAudioUrl(document.data()['audio_url']);
-          if (player.playing == true) {
-            player.stop();
-            t.cancel();
-          }
-          g.playing = true;
-          setState(() {
-            g.p = 0;
-            progress = 0;
-            visibility = true;
-          });
-          playAudio();
-        },
-        child: 
-        */
-        Padding(
-            padding: EdgeInsets.only(left: 25, right: 5, top: 10, bottom: 10),
-            child: Container(
-                height: 45,
-                width: MediaQuery.of(context).size.width,
-                color: Color(0xfe212121),
-                child: Row(
-                  children: [
-                    ////////////////////////////////////////////////////////////
-                    Expanded(
-                        child: GestureDetector(
-                            onTap: () {
-                              currentFile = document;
-                              getAudioUrl(document.data()['audio_url']);
-                              if (player.playing == true) {
-                                player.stop();
-                                t.cancel();
-                              }
-                              g.playing = true;
-                              setState(() {
-                                g.p = 0;
-                                progress = 0;
-
-                                visibility = true;
-                              });
-                              playAudio();
-                            },
-                            child: Row(children: [
-                              ////////////////////////////////////////Song Pic
-                              Container(
-                                  width: 45,
-                                  child: ClipRRect(
-                                      child: Image.network(
-                                          document.data()['cover']))),
-                              //////////////////////////////////Title & Artist
-                              Expanded(
-                                child: Container(
-                                    padding: EdgeInsets.only(left: 10, top: 3),
-                                    child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          ///////////////////////////////Title
-                                          Text(
-                                            document.data()['title'],
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 17,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          //////////////////////////////Artist
-                                          Expanded(
-                                              child: Padding(
-                                                  padding: EdgeInsets.all(0),
-                                                  child: Text(
-                                                    document.data()['artist'],
-                                                    style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 13),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  )))
-                                        ])),
-                              )
-                            ]))),
-                    //////////////////////////////////Title & Artist
-
-                    Padding(
-                        padding: EdgeInsets.only(left: 5, right: 5),
-                        //////////////////////////////////////////////////////////
-                        child: GestureDetector(
-                          child: g.favourites.contains(document.data()['title'])
-                              ? Icon(Icons.favorite, color: Colors.red)
-                              : Icon(
-                                  Icons.favorite_border_outlined,
-                                  color: Colors.grey,
-                                ),
-                          onTap: () {
-                            if (g.favourites
-                                .contains(document.data()['title'])) {
-                              unfavourite(document.data()['title']);
-
-                              setState(() {
-                                //updateUi
-                              });
-                            } else {
-                              favourite(document.data()['title']);
-                              setState(() {
-                                //updateUi
-                              });
-                            }
-                          },
-                        )
-
-                        /*
-                                isListFavourite
-                                    ? Icon(Icons.favorite, color: Colors.red)
-                                    : Icon(
-                                        Icons.favorite_border_outlined,
-                                        color: Colors.grey,
-                                      );*/
-
-                        ),
-                    Padding(
-                        padding: EdgeInsets.only(left: 5, right: 15),
-                        child: GestureDetector(
-                          onTap: null,
-                          child: Icon(Icons.more_vert, color: Colors.grey),
-                        ))
-                  ],
-                )));
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  Widget nowPlaying() {
-    return Visibility(
-        visible: visibility,
-        child: GestureDetector(
-            onTap: () {
-              print('||||||||||||||||||||||||||||||||||');
-              print('||||||||||||||||||||||||||||||||||');
-              print(currentFile.data()['title'].toString());
-              print('||||||||||||||||||||||||||||||||||');
-              print('||||||||||||||||||||||||||||||||||');
-              t.cancel();
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => AudioPage(
-                            uid: uid,
-                            maxProgress: mediaLength,
-                            document: currentFile,
-                            player: player,
-                          ))).then((value) => checkIfPlaying());
-            },
-            child: Container(
-              color: Color(0xfe212121),
-              height: 65,
-              width: MediaQuery.of(context).size.width,
-              child: Column(children: [
-//||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-                ValueListenableBuilder(
-                    builder: (BuildContext context, int value, Widget child) {
-                      return LinearProgressIndicator(
-                        backgroundColor: Color(0xfe212121),
-                        minHeight: 2,
-                        value: progress,
-                        valueColor:
-                            new AlwaysStoppedAnimation<Color>(Colors.white),
-                      );
-                    },
-                    valueListenable: progresscounter),
-//||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-
-                Row(
-                  children: [
-                    Container(
-                      width: 60,
-                      margin: EdgeInsets.only(left: 5),
-                      child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: currentFile == null
-                              ? null
-                              : Image.network(currentFile.data()['cover'])),
-                    ),
-                    ///////////////////////////////////////Song title & artist
-                    Expanded(
-                        child: Column(children: [
-                      Container(
-                          padding: EdgeInsets.only(left: 15, top: 10),
-                          alignment: Alignment.centerLeft,
-                          child: currentFile == null
-                              ? null
-                              : Marquee(
-                                  animationDuration: Duration(seconds: 3),
-                                  pauseDuration: Duration(milliseconds: 1500),
-                                  backDuration: Duration(seconds: 3),
-                                  textDirection: TextDirection.rtl,
-                                  directionMarguee:
-                                      DirectionMarguee.TwoDirection,
-                                  child: Text(
-                                    currentFile.data()['title'],
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 17,
-                                    ),
-                                  ),
-                                )),
-                      /////////////////////////////////////////////////Title
-                      Container(
-                          padding: EdgeInsets.only(left: 15, top: 3),
-                          alignment: Alignment.centerLeft,
-                          child: currentFile == null
-                              ? null
-                              : Marquee(
-                                  animationDuration: Duration(seconds: 3),
-                                  pauseDuration: Duration(milliseconds: 1500),
-                                  backDuration: Duration(seconds: 3),
-                                  textDirection: TextDirection.rtl,
-                                  directionMarguee:
-                                      DirectionMarguee.TwoDirection,
-                                  child: Text(
-                                    currentFile.data()['artist'],
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                )
-                          //currentFile.data()['artist']
-                          ),
-                      ////////////////////////////////////////////////Artist
-                    ])),
-                    ///////////////////////////////////////Song title & artist
-                    ///
-                    /////////////////////////////////////////////////Favourite
-                    Padding(
-                        padding: EdgeInsets.only(right: 10),
-                        child: GestureDetector(
-                          child: existsInFavourites(g.favourites, currentFile)
-                              ? Icon(Icons.favorite,
-                                  size: 28, color: Colors.red)
-                              : Icon(
-                                  Icons.favorite_border_outlined,
-                                  size: 28,
-                                  color: Colors.grey,
-                                ),
-                          onTap: () {
-                            g.favourites.contains(currentFile.data()['title'])
-                                ? unfavourite(currentFile.data()['title'])
-                                : favourite(currentFile.data()['title']);
-
-                            setState(() {
-                              //Refresh Ui
-                            });
-                          },
-                        )),
-                    /////////////////////////////////////////////////Favourite
-                    ///
-                    //////////////////////////////////////////////Play / Pause
-                    Padding(
-                        padding: EdgeInsets.only(right: 20),
-                        child: GestureDetector(
-                            child:
-//||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-                                ValueListenableBuilder(
-                                    valueListenable: playpausecounter,
-                                    builder: (BuildContext context, int v,
-                                        Widget child) {
-                                      return Icon(
-                                          player.playing == true
-                                              ? Icons.pause
-                                              : Icons.play_arrow,
-                                          size: 40,
-                                          color: Colors.white);
-                                    }),
-//||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-
-                            onTap: () {
-                              if (g.playing == true) {
-                                player.pause();
-                                g.playing = false;
-                                playpausecounter.value++;
-                                t.cancel();
-                              } else if (progress == 1 &&
-                                  player.playing == false) {
-                                progress = 0;
-                                progresscounter.value++;
-                                playAudio();
-                              } else {
-                                player.play();
-                                g.playing = true;
-                                setProgress();
-                                playpausecounter.value++;
-                              }
-                              playpausecounter.value++;
-                            })),
-                    //////////////////////////////////////////////Play / Pause
-                  ],
-                )
-              ]),
-            )));
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-
-  Future<bool> nowFavourite() async {
-    List favourite;
-    DocumentSnapshot document;
-    document = await userdata.doc(uid).get();
-    favourite = document.data()['favourite songs'];
-    print(favourite);
-    return null;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-  void getAudioUrl(String sentUrl) {
-    audioUrl = sentUrl;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-  Future<void> playAudio() async {
-    await player.setUrl(audioUrl);
-    await player.setAudioSource(AudioSource.uri(Uri.parse(audioUrl)));
-    await player.load();
-    mediaLength = player.duration.inSeconds.toDouble();
-    print('////////////////');
-    print('////////////////');
-    print(mediaLength);
-    print('////////////////');
-    print('////////////////');
-    player.play();
-    setProgress();
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-  Future<void> favourite(String title) async {
-    g.favourites.add(title);
-    await userdata.doc(uid).update({
-      'favourites': FieldValue.arrayUnion([title])
-    }).then((value) => null);
-    print(g.favourites);
-
-    setState(() {
-      //Update Ui
-    });
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-  Future<void> unfavourite(String title) async {
-    g.favourites.remove(title);
-    await userdata.doc(uid).update({
-      'favourites': FieldValue.arrayRemove([title])
-    }).then((value) => null);
-    print(g.favourites);
-
-    setState(() {
-      //Update UI
-    });
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-  void setProgress() {
-    playpausecounter.value++;
-    const oneSec = const Duration(seconds: 1);
-    t = Timer.periodic(oneSec, (t) {
-      g.p++;
-      progress = (1.0 * g.p / mediaLength);
-      progresscounter.value++;
-      print(progress);
-      print(g.p);
-      if (progress == 1) {
-        t.cancel();
-        player.stop();
-        g.playing = false;
-        playpausecounter.value++;
-        g.p = 0;
-        return;
-      }
-    });
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-  Future<void> getFavourites() async {
-    DocumentSnapshot document;
-    document = await userdata.doc(uid).get();
-    g.favourites = List.from(document['favourites']);
-    print(g.favourites);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-  Icon fav(double size) {
-    return Icon(Icons.favorite, size: size, color: Colors.red);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-  Icon unFav(double size) {
-    return Icon(
-      Icons.favorite_border_outlined,
-      size: size,
-      color: Colors.grey,
-    );
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-  bool existsInFavourites(List favourites, DocumentSnapshot document) {
-    try {
-      if (document.data()['title'] != null) {
-        if (favourites.contains(document.data()['title']) == true) {
-          return true;
+                  /*
+        ListView.builder(
+        itemCount: musicData.length,
+        itemBuilder: (context, index)
+        {
+          return Padding(
+              padding: EdgeInsets.fromLTRB(10, 5, 10, 5),
+              child:createListItem(musicData[index]));
         }
-      } else {
-        return false;
-      }
-    } catch (Exception) {
-      print('kya pata bc');
-      return false;
-    }
+      )*/
 
-    return false;
+                  ),
+              nowPlaying()
+            ])
+            //Scaffold ends here.
+            )
+        //SafeArea ends here.
+        );
+    //build method ends here//////////////////////////////////////////////////////
   }
-////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
+  //This function creates the items in a single list tile
+  Widget createListItem(DocumentSnapshot document) {
+    String cover = document.data()['cover'];
+    String title = document.data()['title'];
+    String artist = document.data()['artist'];
 
+    return GestureDetector(
+        onTap: () {
+          //Implement play music action.
+          Global.currentFile = document;
+          print(Global.currentFile);
+          visibility = true;
+          AudioHubPlayer.play(Global.currentFile);
+          currentMusicNotifier.value++;
+        },
+        child: Row(children: [
+          //Cover Image
+          Container(width: 50, height: 50, child: Image.network(cover)),
+          //Spacing
+          Padding(padding: EdgeInsets.only(right: 10)),
+          //Title & Artist
+          Expanded(
+              //width: 50,
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                //Title
+                Text(
+                  title,
+                  style: TextStyle(color: Colors.white, fontSize: 16.5),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                //Spacing
+                Padding(padding: EdgeInsets.only(bottom: 5)),
+                //Artist
+                Text(artist, style: TextStyle(color: Colors.white))
+              ])),
+          //Favourite Button
+
+          ValueListenableBuilder(
+              valueListenable: Listener.favNotifier,
+              builder: (BuildContext context, int value, Widget child) {
+                return Global.favourites.contains(document.id)
+                    ? GestureDetector(
+                        onTap: () {
+                          Global.favourites.contains(document.id)
+                              ? Global.unfavourite(document.id)
+                              : Global.favourite(document.id);
+
+                          Global.fetchFavourites().then((_) => Listener.favNotifier.value++);
+                        }, //TODO : Implement add to/remove from favourites list
+                        child: Container(
+                            //width: 30,
+                            padding: EdgeInsets.only(left: 5),
+                            child: Icon(Icons.favorite,
+                                color: Colors.red, size: 25)))
+                    : Container();
+              }),
+          //Options Button
+          GestureDetector(
+              onTap: null, //TODO : Implement various other actions
+              child: Padding(
+                  padding: EdgeInsets.only(left: 10),
+                  child: Icon(Icons.more_vert, size: 25, color: Colors.white)))
+        ]));
+  }
+
+  //Now Playing tab
+  Widget nowPlaying() {
+    try {
+      return ValueListenableBuilder(
+          valueListenable: currentMusicNotifier,
+          builder: (BuildContext context, int value, Widget child) {
+            return Visibility(
+                visible: visibility,
+                child: Container(
+                    color: Color(0xfe363636),
+                    height: 62,
+                    child: GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    AudioPage())), //TODO : Implement tap action
+                        child: Column(children: [
+                          ValueListenableBuilder(
+                            valueListenable: Listener.progressNotifier,
+                            builder: (BuildContext context, int value,
+                                Widget child) {
+                              return LinearProgressIndicator(
+                                backgroundColor: Color(0xfe212121),
+                                minHeight: 2,
+                                value: AudioHubPlayer.decProgress,
+                                valueColor: new AlwaysStoppedAnimation<Color>(
+                                    Colors.white),
+                              );
+                            },
+                          ),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                //Cover Image
+                                Container(
+                                    width: 60,
+                                    height: 60,
+                                    child: Image.network(
+                                        Global.currentFile != null
+                                            ? Global.currentFile.data()['cover']
+                                            : "")),
+                                //Spacing
+                                Padding(padding: EdgeInsets.only(right: 15)),
+                                //Title and Artist
+                                Expanded(
+                                    child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    //Title
+                                    ValueListenableBuilder(
+                                        valueListenable: Listener.statue,
+                                        builder: (BuildContext context,
+                                            int value, Widget child) {
+                                          String text = Global.currentFile
+                                              .data()['title'];
+
+                                          return text.length >
+                                                  MediaQuery.of(context)
+                                                          .size
+                                                          .width /
+                                                      20
+                                              ? 
+                                              Padding(
+                                              padding: EdgeInsets.only(top:10,bottom:3),
+                                              child:Container(
+                                                  height: 20,
+                                                  child: Marquee(
+                                                      blankSpace: 50,
+                                                      velocity: 20,
+                                                      fadingEdgeStartFraction:
+                                                          0.15,
+                                                      fadingEdgeEndFraction:
+                                                          0.15,
+                                                      text: Global.currentFile !=
+                                                              null
+                                                          ? Global.currentFile
+                                                              .data()['title']
+                                                          : 'null',
+                                                      style: TextStyle(
+                                                          fontSize: 17,
+                                                          color: Colors.white))))
+                                              : Expanded(
+                                                  child: Container(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(text,
+                                                          style: TextStyle(
+                                                              fontSize: 17,
+                                                              color: Colors.white))));
+                                        }),
+
+                                    //Artist
+                                    Expanded(
+                                        child: Text(
+                                            Global.currentFile != null
+                                                ? Global.currentFile
+                                                    .data()['artist']
+                                                : '',
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                            style:
+                                                TextStyle(color: Colors.white)))
+                                  ],
+                                )),
+
+                                //Favourite button
+                                Padding(
+                                    padding:
+                                        EdgeInsets.only(left: 20, right: 10),
+                                    child: ValueListenableBuilder(
+                                        valueListenable: Listener.favNotifier,
+                                        builder: (BuildContext context,
+                                            int value, Widget child) {
+                                          return Container(
+                                              child: GestureDetector(
+                                                  child: Global.favourites
+                                                          .contains(Global
+                                                              .currentFile.id)
+                                                      ? Icon(
+                                                          Icons.favorite,
+                                                          color: Colors.red,
+                                                          size: 25,
+                                                        )
+                                                      : Icon(
+                                                          Icons.favorite_border,
+                                                          color: Colors.grey,
+                                                          size: 25,
+                                                        ),
+
+                                                  //Implement favourite/unfavourite action
+                                                  onTap: () {
+                                                    try {
+                                                      Global.favourites
+                                                              .contains(Global
+                                                                  .currentFile
+                                                                  .id)
+                                                          ? Global.unfavourite(
+                                                              Global.currentFile
+                                                                  .id)
+                                                          : Global.favourite(
+                                                              Global.currentFile
+                                                                  .id);
+                                                      Global.fetchFavourites()
+                                                          .then((_) => Listener
+                                                              .favNotifier
+                                                              .value++);
+                                                    } catch (Exception) {
+                                                      print("Unknown id");
+                                                    }
+                                                  }));
+                                        })),
+
+                                //Play/pause button
+                                Padding(
+                                    padding: EdgeInsets.only(right: 20),
+                                    child: ValueListenableBuilder(
+                                        valueListenable:
+                                            Listener.playBackNotifier,
+                                        builder: (BuildContext context,
+                                            int value, Widget child) {
+                                          return Container(
+                                              //padding: EdgeInsets.only(right: 10),
+
+                                              child: GestureDetector(
+                                            child: AudioHubPlayer.isPlaying()
+                                                ? Icon(
+                                                    Icons.pause,
+                                                    color: Colors.white,
+                                                    size: 35,
+                                                  )
+                                                : Icon(Icons.play_arrow,
+                                                    color: Colors.white,
+                                                    size: 35),
+                                            //Implement Play/Pause action
+                                            onTap: () {
+
+                                              if(AudioHubPlayer.decProgress==1)
+                                              {
+                                                AudioHubPlayer.playFromStart();
+                                              }
+                                              else{
+                                              AudioHubPlayer.isPlaying()
+                                                  ? AudioHubPlayer.pause()
+                                                  : AudioHubPlayer.resume();}
+                                            },
+                                          ));
+                                        })),
+                              ],
+                            ),
+                          )
+                        ]))));
+          });
+    } catch (exception) {
+      print('id not found');
+      return Container();
+    }
+  }
+
+  //Now Playing widget ends here
+
+  //Ui update
+  void updateUi() {
+    setState(() {
+      //updates ui
+    });
+  }
+
+  //HomeState class ends here.
 }
