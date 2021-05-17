@@ -7,6 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:audiohub/global.dart';
+
 class SignUp extends StatefulWidget {
   @override
   State<StatefulWidget> createState() => SignUpState();
@@ -180,7 +182,8 @@ class SignUpState extends State<SignUp> {
     ////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////
-    if (false) {
+    if (false)
+    {
       errorMsg = 'Please fill up all the fields.';
       visibleError = true;
       setState(() {});
@@ -197,10 +200,13 @@ class SignUpState extends State<SignUp> {
             'uid': uid,
             'password': password,
             'favourites': []
-          }).then((_) => Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (BuildContext context) => HomePage(uid: uid))));
+          }).then((_)
+          {
+            Global.uid=uid;
+            Global.fetchFavourites();
+            Navigator
+            .pushReplacement(context,
+            MaterialPageRoute(builder: (BuildContext context) => HomePage()));});
         } else {
           errorMsg = 'This User ID already exists!';
           visibleError = true;

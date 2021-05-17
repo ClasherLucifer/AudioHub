@@ -1,10 +1,11 @@
 import 'package:audiohub/homepage.dart';
 import 'package:audiohub/signup.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+
+import 'package:audiohub/global.dart';
 
 class Login extends StatefulWidget {
   @override
@@ -26,6 +27,7 @@ class LoginState extends State<Login> {
   void initState() {
     //initialiseFlutterFire();
     super.initState();
+    
   }
 
   @override
@@ -173,8 +175,10 @@ class LoginState extends State<Login> {
         .get();
     hasAccount = result.docs.isNotEmpty ? true : false;
     if (hasAccount) {
+      Global.uid=uid;
+      Global.fetchFavourites();
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (context) => HomePage(uid: uid)));
+          context, MaterialPageRoute(builder: (context) => HomePage()));
     } else {
       errorMsg = 'Incorrect User ID and/or Password';
       visibleError = true;

@@ -1,0 +1,14 @@
+Music--------
+            -artist       [String]
+            -audio_url    [String]
+            -cover        [String]
+            -plays        [Number]
+            -title        [String]
+||||||||||||||||||||||||||||||||||||||||||||
+
+User Data----
+            -email        [String]
+            -favourites   [Array]
+            -password     [String]
+            -uid          [String]
+||||||||||||||||||||||||||||||||||||||||||||
