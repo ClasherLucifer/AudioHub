@@ -1,7 +1,8 @@
+import 'package:audiohub/login.dart';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MaterialApp(home:Login()));
 }
 
 class MyApp extends StatelessWidget {
